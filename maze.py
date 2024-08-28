@@ -1,9 +1,5 @@
-from pygame.sprite import AbstractGroup
-import mazeCreate
+import MazeCreate
 import statistics
-import pygame
-from sys import exit
-import ctypes
 
 #Sample Mazes
 # maze = [
@@ -29,9 +25,6 @@ import ctypes
 #     [1, 1, 1, 'E', 1]
 # ]
 
-def roundDown(x, n):
-    return x if x%(10**n) == 0 else x - x%(10**n)
-
 def printTable(array):
     for x in array:
         print(x)
@@ -42,7 +35,6 @@ def isConnected(loc1, loc2):
     if (abs(loc1[0] - loc2[0])) ^ (abs(loc1[1] - loc2[1])):
         return True
     return False
-
 
 def pathVerify(maze, startLocation, path):
     if startLocation != path[0]:
@@ -115,11 +107,8 @@ def directionTaken(srcLocation, dstLocation):
     else:
         return "Error? Same"
 
-def mazeSolverBFS(maze, start = None, end = None, visualize = False):
+def mazeSolverBFS(maze, start = None, end = None):
     global iterations
-    if visualize:
-        global pxSize, speed, border
-        fpsTime, keyTime = 0,0
     if start is None or end is None:
         temp = findStartEnd(maze)
         start = temp[0]
@@ -133,41 +122,13 @@ def mazeSolverBFS(maze, start = None, end = None, visualize = False):
     while len(searchQueue) > 0:
         iterations += 1
         curLocation = searchQueue.pop(0)
-
-        if visualize:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    exit()
-
-            key = pygame.key.get_pressed()
-            if key[pygame.K_EQUALS] and keyTime > 100:
-                speed += 1
-                keyTime = 0
-            elif key[pygame.K_MINUS] and keyTime > 100:
-                if speed > 0:
-                    speed -= 1
-                keyTime = 0
-
-            if fpsTime > 1000:
-                print(f"Max FPS: {speed}     FPS: {clock.get_fps()}", end="\r")
-                fpsTime = 0
-
-            keyTime += clock.get_time()
-            fpsTime += clock.get_time()
-
-            drawPath(pxSize, curLocation, path[curLocation])
-            clock.tick(speed)
             
         for x in findUnsearchedNodes(maze, curLocation, path):
             if x == end:
                 return path[curLocation] + [end]
             searchQueue.append(x)
             path[x] = path[curLocation] + [x]
-
-        if not(isConnected(searchQueue[0], curLocation)) and visualize:
-            clearPath(pxSize, path[curLocation])
-        
+ 
     raise RuntimeError("Could not reach END")
 
 def mazeSolverDFS(maze, start = None, end = None, visualize=False):
@@ -189,39 +150,11 @@ def mazeSolverDFS(maze, start = None, end = None, visualize=False):
         iterations += 1
         curLocation = searchStack.pop()
 
-        if visualize:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    exit()
-
-            key = pygame.key.get_pressed()
-            if key[pygame.K_EQUALS] and keyTime > 100:
-                speed += 1
-                keyTime = 0
-            elif key[pygame.K_MINUS] and keyTime > 100:
-                if speed > 0:
-                    speed -= 1
-                keyTime = 0
-
-            if fpsTime > 1000:
-                print(f"Max FPS: {speed}     FPS: {clock.get_fps()}", end="\r")
-                fpsTime = 0
-
-            keyTime += clock.get_time()
-            fpsTime += clock.get_time()
-
-            drawPath(pxSize, curLocation, path[curLocation])
-            clock.tick(speed)
-
         for x in findUnsearchedNodes(maze, curLocation, path):
             if x == end:
                 return path[curLocation] + [end]
             searchStack.append(x)
             path[x] = path[curLocation] + [x]
-        
-        if not(isConnected(searchStack[-1], curLocation)) and visualize:
-            clearPath(pxSize, path[curLocation])
         
     raise RuntimeError("Could not reach END")
 
@@ -265,11 +198,8 @@ def addToHeap(heap, curPos, key=lambda x : x):
         break
     heap[curPos] = item #reinsert item
 
-def mazeSolverAStar(maze, start = None, end = None, visualize=False):
+def mazeSolverAStar(maze, start = None, end = None):
     global iterations
-    if visualize:
-        global pxSize, speed, border
-        keyTime, fpsTime = 0,0
     if start is None or end is None:
         temp = findStartEnd(maze)
         start = temp[0]
@@ -289,115 +219,26 @@ def mazeSolverAStar(maze, start = None, end = None, visualize=False):
         curLocation = heap.pop(0)
         iterations += 1
 
-        if visualize:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    exit()
-
-            key = pygame.key.get_pressed()
-            if key[pygame.K_EQUALS] and keyTime > 100:
-                speed += 1
-                keyTime = 0
-            elif key[pygame.K_MINUS] and keyTime > 100:
-                if speed > 0:
-                    speed -= 1
-                keyTime = 0
-
-            if fpsTime > 1000:
-                print(f"Max FPS: {speed}     FPS: {clock.get_fps()}", end="\r")
-                fpsTime = 0
-
-            keyTime += clock.get_time()
-            fpsTime += clock.get_time()
-
-            drawPath(pxSize, curLocation, path[curLocation])
-            clock.tick(speed)
-
         for x in findUnsearchedNodes(maze, curLocation, path):
             if x == end:
                 return path[curLocation] + [end]
             heap.append(x)
             addToHeap(heap, len(heap) - 1, fetchHeuristicVal)
             path[x] = path[curLocation] + [x]
-
-        if not(isConnected(heap[0], curLocation)) and visualize:
-            clearPath(pxSize, path[curLocation])
         
     raise RuntimeError("Could not reach END")
-    return path[end]
     
-#Draw an individual cell in a maze
-def drawCell(pxSize, colour, borderColour, xCoord, yCoord, border=False):
-    a = pygame.draw.rect(screen, colour, [xCoord*pxSize, yCoord*pxSize, pxSize, pxSize])
-    if border:
-        b = pygame.draw.rect(screen, borderColour, [xCoord*pxSize, yCoord*pxSize, pxSize, pxSize], 1)
-    return [a,b] if border else [a]
 
-#Only draws the path taken for the search (saves cpu)
-def drawPath(pxSize, curLoc, path, curColour=(0,0,255), pathColour=(0,255,0), bgColour=(0,0,0)):
-    rectList = []
-    for yCoord, xCoord in path:
-        rectList.extend(drawCell(pxSize, pathColour, bgColour, xCoord, yCoord, True))
-    rectList.extend(drawCell(pxSize, curColour, bgColour, curLoc[1], curLoc[0], True))
-    pygame.display.update(rectList)
-
-def clearPath(pxSize, path):
-    rectList = []
-    for yCoord, xCoord in path:
-        rectList.extend(drawCell(pxSize, (0,0,0), (0,0,0), xCoord, yCoord, False))
-    pygame.display.update(rectList)
-
-#Draws the entire maze
-def renderMaze(maze, pxSize, curLoc=None, path=None, wallColour = (255,255,255), bgColour = (0,0,0), startEndColour=(255,0,0), curColour=(0,0,255), pathColour=(0,255,0)):
-    start, end = findStartEnd(maze)
-    screen.fill(bgColour)
-    for yCoord, row in enumerate(maze):
-        for xCoord, val in enumerate(row):
-            if (yCoord, xCoord) == start or (yCoord, xCoord) == end:
-                drawColour = startEndColour
-            elif val == 1:
-                drawColour = wallColour
-            else:
-                continue
-            drawCell(pxSize, drawColour, bgColour, xCoord, yCoord, True)
-    pygame.display.update()
-
-
-mazeLength = int(input("Enter length of maze: "))
-mazeWidth = int(input("Enter width of maze: "))
-visualize = True if input("Visualize (Y/N): ").upper() == "Y" else False
-
-maze = mazeCreate.createMaze(mazeLength, mazeWidth)
-# mazeCreate.printMaze(maze)
-temp = findStartEnd(maze)
-
-if visualize:
-    user32 = ctypes.windll.user32
-    pxSize = min(roundDown(user32.GetSystemMetrics(0),2)//mazeWidth, roundDown(user32.GetSystemMetrics(1),2)//mazeLength)
-    border = True if pxSize > 8 else False
-
-    screenwidth, screenheight = pxSize*mazeWidth, pxSize*mazeLength
-    screen = pygame.display.set_mode([screenwidth,screenheight])
-    pygame.display.set_caption("Solving Maze...")
-    clock = pygame.time.Clock()
-    renderMaze(maze, pxSize)
-    speed = 60
-
-    foo = mazeSolverAStar
-    directions = foo(maze, visualize=True)
-    pygame.display.set_caption("Solved!")
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                exit()
-else:
+if __name__ == "__main__":
+    mazeLength = int(input("Enter length of maze: "))
+    mazeWidth = int(input("Enter width of maze: "))
     attempts = int(input("Enter how many attempts: "))
 
     iterations = 0
     iterationsArray = [[],[],[]]
     for x in range(1, attempts + 1):
+        maze = MazeCreate.createMaze(mazeLength, mazeWidth)
+        temp = findStartEnd(maze)
         print(f"Iteration ({x}/{attempts})", end="\r")
 
         foo = mazeSolverAStar
