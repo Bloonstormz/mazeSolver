@@ -157,15 +157,15 @@ def mazeSolverBFS(maze, start = None, end = None, visualize = False):
             fpsTime += clock.get_time()
 
             drawPath(pxSize, curLocation, path[curLocation])
-
             clock.tick(speed)
+            
         for x in findUnsearchedNodes(maze, curLocation, path):
             if x == end:
                 return path[curLocation] + [end]
             searchQueue.append(x)
             path[x] = path[curLocation] + [x]
 
-        if not isConnected(searchQueue[0], curLocation):
+        if not isConnected(searchQueue[0], curLocation) and visualize:
             clearPath(pxSize, path[curLocation])
         
     raise RuntimeError("Could not reach END")
@@ -190,7 +190,6 @@ def mazeSolverDFS(maze, start = None, end = None, visualize=False):
         curLocation = searchStack.pop()
 
         if visualize:
-            clock.tick(speed)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
@@ -213,6 +212,7 @@ def mazeSolverDFS(maze, start = None, end = None, visualize=False):
             fpsTime += clock.get_time()
 
             drawPath(pxSize, curLocation, path[curLocation])
+            clock.tick(speed)
 
         for x in findUnsearchedNodes(maze, curLocation, path):
             if x == end:
@@ -220,7 +220,7 @@ def mazeSolverDFS(maze, start = None, end = None, visualize=False):
             searchStack.append(x)
             path[x] = path[curLocation] + [x]
         
-        if not isConnected(searchStack[-1], curLocation):
+        if not isConnected(searchStack[-1], curLocation) and visualize:
             clearPath(pxSize, path[curLocation])
         
     raise RuntimeError("Could not reach END")
@@ -289,7 +289,6 @@ def mazeSolverAStar(maze, start = None, end = None, visualize=False):
         iterations += 1
 
         if visualize:
-            clock.tick(speed)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
@@ -312,6 +311,7 @@ def mazeSolverAStar(maze, start = None, end = None, visualize=False):
             fpsTime += clock.get_time()
 
             drawPath(pxSize, curLocation, path[curLocation])
+            clock.tick(speed)
 
         for x in findUnsearchedNodes(maze, curLocation, path):
             if x == end:
@@ -320,8 +320,8 @@ def mazeSolverAStar(maze, start = None, end = None, visualize=False):
             addToHeap(heap, len(heap) - 1, heuristicTable)
             path[x] = path[curLocation] + [x]
 
-            if not isConnected(heap[0], curLocation):
-                clearPath(pxSize, path[curLocation])
+        if not isConnected(heap[0], curLocation) and visualize:
+            clearPath(pxSize, path[curLocation])
         
     raise RuntimeError("Could not reach END")
     return path[end]
