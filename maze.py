@@ -165,7 +165,7 @@ def mazeSolverBFS(maze, start = None, end = None, visualize = False):
             searchQueue.append(x)
             path[x] = path[curLocation] + [x]
 
-        if not isConnected(searchQueue[0], curLocation) and visualize:
+        if not(isConnected(searchQueue[0], curLocation)) and visualize:
             clearPath(pxSize, path[curLocation])
         
     raise RuntimeError("Could not reach END")
@@ -220,7 +220,7 @@ def mazeSolverDFS(maze, start = None, end = None, visualize=False):
             searchStack.append(x)
             path[x] = path[curLocation] + [x]
         
-        if not isConnected(searchStack[-1], curLocation) and visualize:
+        if not(isConnected(searchStack[-1], curLocation)) and visualize:
             clearPath(pxSize, path[curLocation])
         
     raise RuntimeError("Could not reach END")
@@ -253,19 +253,17 @@ def generateHeuristic(maze, end = None):
     heuristicTable = [[(abs(end[0] - y) + abs(end[1] - x)) for x in range(len(maze[0]))] for y in range(len(maze))]
     return heuristicTable
 
-def addToHeap(array, child, table):
-    flag = False
-    if child % 2 == 0:
-        parent = int((child - 2) / 2)
-    else:
-        parent = int((child - 1) / 2)
-    
-    if table[array[child][0]][array[child][1]] < table[array[parent][0]][array[parent][1]]:
-        flag = True
-    
-    if flag:
-        array[child], array[parent] = array[parent], array[child]
-        addToHeap(array, parent, table)
+def addToHeap(heap, curPos, key=lambda x : x):
+    item = heap[curPos] #store item to move
+    while curPos > 0:
+        parentPos = (curPos - 1) >> 1
+        parentItem = heap[parentPos]
+        if key(item) < key(parentItem):
+            heap[curPos] = parentItem
+            curPos = parentPos
+            continue
+        break
+    heap[curPos] = item #reinsert item
 
 def mazeSolverAStar(maze, start = None, end = None, visualize=False):
     global iterations
@@ -277,6 +275,10 @@ def mazeSolverAStar(maze, start = None, end = None, visualize=False):
         start = temp[0]
         end = temp[1]
 
+    def fetchHeuristicVal(pos):
+        nonlocal heuristicTable
+        return heuristicTable[pos[0]][pos[1]]
+
     iterations = 0
     # Maze solving
     path = {start : [start]} # Dictionary to store path taken to all points
@@ -284,7 +286,6 @@ def mazeSolverAStar(maze, start = None, end = None, visualize=False):
     heuristicTable = generateHeuristic(maze, end)
 
     while len(heap) > 0:
-        heap[0], heap[-1] = heap[-1], heap[0]
         curLocation = heap.pop(0)
         iterations += 1
 
@@ -317,10 +318,10 @@ def mazeSolverAStar(maze, start = None, end = None, visualize=False):
             if x == end:
                 return path[curLocation] + [end]
             heap.append(x)
-            addToHeap(heap, len(heap) - 1, heuristicTable)
+            addToHeap(heap, len(heap) - 1, fetchHeuristicVal)
             path[x] = path[curLocation] + [x]
 
-        if not isConnected(heap[0], curLocation) and visualize:
+        if not(isConnected(heap[0], curLocation)) and visualize:
             clearPath(pxSize, path[curLocation])
         
     raise RuntimeError("Could not reach END")
