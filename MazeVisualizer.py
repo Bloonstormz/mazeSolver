@@ -4,6 +4,33 @@ import ctypes
 import mazeCreate
 import Maze
 from enum import Enum
+import time
+
+class Timer():
+    def __init__(self):
+        self.__hour = 0
+        self.__min = 0
+        self.__sec = 0
+        self.__startTime = None
+
+    def start(self):
+        if self.__startTime:
+            return
+        self.__startTime = time.time()
+    
+    def duration(self):
+        temp = time.time() - self.__startTime
+        self.__sec = str(round(temp % 60, 2))
+        self.__min = str(int((temp//60)%60))
+        self.__hour = int(temp//3600)
+
+        if len(self.__sec.split(".")[0]) == 1:
+            self.__sec = "0" + self.__sec
+        if len(self.__min) == 1:
+            self.__min = "0" + self.__min
+    
+    def __str__(self) -> str:
+        return f"{self.__hour}:{self.__min}:{self.__sec}"
 
 class ADTEnum(Enum):
     QUEUE = 0
@@ -55,6 +82,8 @@ def roundDown(x, n):
 def calcPixel(mazeLength, mazeWidth):
     user32 = ctypes.windll.user32
     pxSize = min(roundDown(user32.GetSystemMetrics(0),2)//mazeWidth, roundDown(user32.GetSystemMetrics(1),2)//mazeLength)
+    if pxSize < 1:
+        raise ValueError("Maze Dimensions too large! Unable to render pixel")
     border = True if pxSize > 5 else False
 
     return pxSize, pxSize*mazeWidth, pxSize*mazeLength, border
@@ -128,6 +157,9 @@ def mazeSolver(maze, method : ADTEnum, screen, cellBorder, cellSize):
             print(f"Max FPS: {speed}     FPS: {clock.get_fps()}", end="\r")
             fpsTime = 0
 
+        timer.duration()
+        pygame.display.set_caption(f"Solving Maze... Time taken: {timer}")
+
         keyTime += clock.get_time()
         fpsTime += clock.get_time()
 
@@ -162,20 +194,27 @@ if __name__ == "__main__":
     mazeLength = int(input("Enter length of maze: "))
     mazeWidth = int(input("Enter width of maze: "))
 
-    maze = mazeCreate.createMaze(mazeLength, mazeWidth)
+    try:
+        pxSize, screenwidth, screenheight, border = calcPixel(mazeLength, mazeWidth)
+    except ValueError:
+        print("Unable to render maze. Dimensions too large")
+        exit()
 
+    maze = mazeCreate.createMaze(mazeLength, mazeWidth)
     temp = Maze.findStartEnd(maze)
 
-    pxSize, screenwidth, screenheight, border = calcPixel(mazeLength, mazeWidth)
     screen = pygame.display.set_mode([screenwidth,screenheight])
-    pygame.display.set_caption("Solving Maze...")
+    pygame.display.set_caption("Solving Maze... Time taken: 0:00:00.0")
     clock = pygame.time.Clock()
     renderMaze(screen, maze, pxSize, border=border)
     speed = 60
 
+    timer = Timer()
+    timer.start()
     foo = mazeSolving
-    foo(maze, "AStar", screen, border, pxSize)
-    pygame.display.set_caption("Solved!")
+    foo(maze, "dfs", screen, border, pxSize)
+    timer.duration()
+    pygame.display.set_caption(f"Solved! Time taken: {timer}")
     
     while True:
         for event in pygame.event.get():
@@ -183,4 +222,4 @@ if __name__ == "__main__":
                 pygame.quit()
                 exit()
         
-        clock.tick(1)
+        clock.tick(20)
