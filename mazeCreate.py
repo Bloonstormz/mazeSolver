@@ -22,7 +22,7 @@ def findAdjacentNodes(maze, cell, corner=False, wall = True, mazeLenLimit = None
         neighbours.append((cell[0], rightX))
     return neighbours
 
-def createMaze(length, width, corner = False, start = None):
+def createMaze(length, width, start = None):
     maze = [[1 for x in range(width)] for y in range(length)]
     potentialPath = set() #stores coords of cells that could become 0
     if start is None:
@@ -80,7 +80,7 @@ if __name__ == "__main__":
                     pygame.quit()
                     exit()
             
-            clock.tick(1)
+            clock.tick(60)
 
     else:
         printMaze(maze)
