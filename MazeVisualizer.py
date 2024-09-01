@@ -13,15 +13,19 @@ class ADTEnum(Enum):
 class ADT():
     def __init__(self, val, type : ADTEnum):
         self.vals = [val]
+        self.__length = 1
         self.type = type
 
     def add(self, val, key=lambda x : x):
+        self.__length += 1
         match self.type.name:
             case "QUEUE":
                 self.vals.append(val)
-            case "DFS":
+            case "STACK":
                 self.vals.append(val)
-            case "ASTAR":
+            case "MINHEAP":
+                self.vals.append(val)
+                curPos = self.__length - 1
                 item = self.vals[curPos] #store item to move
                 while curPos > 0:
                     parentPos = (curPos - 1) >> 1
@@ -36,13 +40,14 @@ class ADT():
                 raise ValueError(f"Unexpected type provided: {self.type}")
 
     def remove(self):
+        self.__length -= 1
         return self.vals.pop(0) if self.type.name == "QUEUE" or self.type.name == "ASTAR" else self.vals.pop()
     
     def peek(self):
         return self.vals[0] if self.type.name == "QUEUE" or self.type.name == "ASTAR" else self.vals[-1]
     
     def length(self):
-        return self.vals.__len__()
+        return self.__length
 
 def roundDown(x, n):
     return x if x%(10**n) == 0 else x - x%(10**n)
@@ -169,7 +174,7 @@ if __name__ == "__main__":
     speed = 60
 
     foo = mazeSolving
-    foo(maze, "BFS", screen, border, pxSize)
+    foo(maze, "AStar", screen, border, pxSize)
     pygame.display.set_caption("Solved!")
     
     while True:

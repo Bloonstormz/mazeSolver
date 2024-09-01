@@ -1,3 +1,5 @@
+import random
+
 def findAdjacentNodes(maze, cell, corner=False, wall = True, mazeLenLimit = None, mazeWidthLimit = None):
     if mazeLenLimit or mazeWidthLimit:
         mazeLenLimit, mazeWidthLimit = len(maze) - 2, len(maze[0]) - 2
@@ -24,15 +26,15 @@ def findAdjacentNodes(maze, cell, corner=False, wall = True, mazeLenLimit = None
 
 def createMaze(length, width, start = None):
     maze = [[1 for x in range(width)] for y in range(length)]
-    potentialPath = set() #stores coords of cells that could become 0
+    potentialPath = [] #stores coords of cells that could become 0
     if start is None:
         start = (1, 1)
     maze[start[0]][start[1]] = 0
     allPaths = {start} #Stores coords of nodes that are 0 (path cells)
-    potentialPath.update(findAdjacentNodes(maze, start, wall=True, mazeLenLimit=length, mazeWidthLimit=width))
+    potentialPath.extend(findAdjacentNodes(maze, start, wall=True, mazeLenLimit=length, mazeWidthLimit=width))
 
     while len(potentialPath) > 0:
-        temp = potentialPath.pop()
+        temp = potentialPath.pop(random.randrange(0,len(potentialPath)))
         count = 0
         for x in findAdjacentNodes(maze, temp, wall=False, mazeLenLimit=length, mazeWidthLimit=width):
             if x in allPaths:
@@ -40,7 +42,7 @@ def createMaze(length, width, start = None):
         if count == 1: #If there's only one way into temp (i.e one empty cell next to temp) then mark it as empty
             maze[temp[0]][temp[1]] = 0
             allPaths.add(temp)
-            potentialPath.update(findAdjacentNodes(maze, temp, wall=True, mazeLenLimit=length, mazeWidthLimit=width)) #Add all adjacent walls
+            potentialPath.extend(findAdjacentNodes(maze, temp, wall=True, mazeLenLimit=length, mazeWidthLimit=width)) #Add all adjacent walls
     
     maze = pickStartEnd(maze)
 
