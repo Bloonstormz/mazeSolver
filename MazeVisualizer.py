@@ -1,7 +1,7 @@
 import pygame
 from sys import exit
 import ctypes
-import MazeCreate
+import mazeCreate
 import Maze
 from enum import Enum
 
@@ -46,6 +46,13 @@ class ADT():
 
 def roundDown(x, n):
     return x if x%(10**n) == 0 else x - x%(10**n)
+
+def calcPixel(mazeLength, mazeWidth):
+    user32 = ctypes.windll.user32
+    pxSize = min(roundDown(user32.GetSystemMetrics(0),2)//mazeWidth, roundDown(user32.GetSystemMetrics(1),2)//mazeLength)
+    border = True if pxSize > 5 else False
+
+    return pxSize, pxSize*mazeWidth, pxSize*mazeLength, border
 
 #Draw an individual cell in a maze
 def drawCell(screen, pxSize, colour, borderColour, xCoord, yCoord, border=False):
@@ -150,14 +157,11 @@ if __name__ == "__main__":
     mazeLength = int(input("Enter length of maze: "))
     mazeWidth = int(input("Enter width of maze: "))
 
-    maze = MazeCreate.createMaze(mazeLength, mazeWidth)
+    maze = mazeCreate.createMaze(mazeLength, mazeWidth)
 
     temp = Maze.findStartEnd(maze)
-    user32 = ctypes.windll.user32
-    pxSize = min(roundDown(user32.GetSystemMetrics(0),2)//mazeWidth, roundDown(user32.GetSystemMetrics(1),2)//mazeLength)
-    border = True if pxSize > 5 else False
 
-    screenwidth, screenheight = pxSize*mazeWidth, pxSize*mazeLength
+    pxSize, screenwidth, screenheight, border = calcPixel(mazeLength, mazeWidth)
     screen = pygame.display.set_mode([screenwidth,screenheight])
     pygame.display.set_caption("Solving Maze...")
     clock = pygame.time.Clock()
@@ -173,3 +177,5 @@ if __name__ == "__main__":
             if event.type == pygame.QUIT:
                 pygame.quit()
                 exit()
+        
+        clock.tick(1)

@@ -1,4 +1,4 @@
-import MazeCreate
+import mazeCreate
 import statistics
 
 #Sample Mazes
@@ -237,7 +237,7 @@ if __name__ == "__main__":
     iterations = 0
     iterationsArray = [[],[],[]]
     for x in range(1, attempts + 1):
-        maze = MazeCreate.createMaze(mazeLength, mazeWidth)
+        maze = mazeCreate.createMaze(mazeLength, mazeWidth)
         temp = findStartEnd(maze)
         print(f"Iteration ({x}/{attempts})", end="\r")
 
