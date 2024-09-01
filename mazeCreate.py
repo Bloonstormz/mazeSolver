@@ -1,6 +1,6 @@
-def findAdjacentNodes(maze, cell, corner=False, wall = True):
-    mazeLen = len(maze)
-    mazeWidth = len(maze[0])
+def findAdjacentNodes(maze, cell, corner=False, wall = True, mazeLenLimit = None, mazeWidthLimit = None):
+    if mazeLenLimit or mazeWidthLimit:
+        mazeLenLimit, mazeWidthLimit = len(maze) - 2, len(maze[0]) - 2
 
     leftX = cell[1] - 1
     downY = cell[0] + 1
@@ -12,13 +12,13 @@ def findAdjacentNodes(maze, cell, corner=False, wall = True):
     else:
         comp = 0
 
-    if downY <= len(maze) - 2 and maze[downY][cell[1]] == comp:
+    if downY <= mazeLenLimit and maze[downY][cell[1]] == comp: #Check bottom
         neighbours.append((downY, cell[1]))
-    if upY >= 1 and maze[upY][cell[1]] == comp:
+    if upY >= 1 and maze[upY][cell[1]] == comp: #Check Up
         neighbours.append((upY, cell[1]))
-    if leftX >= 1 and maze[cell[0]][leftX] == comp:
+    if leftX >= 1 and maze[cell[0]][leftX] == comp: #Check Left
         neighbours.append((cell[0], leftX))
-    if (downY < len(maze)) and rightX <= len(maze[downY]) - 2 and maze[cell[0]][rightX] == comp:
+    if rightX <= mazeWidthLimit and maze[cell[0]][rightX] == comp: #Check Right
         neighbours.append((cell[0], rightX))
     return neighbours
 
@@ -28,21 +28,19 @@ def createMaze(length, width, corner = False, start = None):
     if start is None:
         start = (1, 1)
     maze[start[0]][start[1]] = 0
-    visited = {start}
-    potentialPath.update(findAdjacentNodes(maze, start, wall=True))
+    allPaths = {start} #Stores coords of nodes that are 0 (path cells)
+    potentialPath.update(findAdjacentNodes(maze, start, wall=True, mazeLenLimit=length, mazeWidthLimit=width))
 
     while len(potentialPath) > 0:
         temp = potentialPath.pop()
         count = 0
-        for x in findAdjacentNodes(maze, temp, wall=False):
-            if x in visited:
+        for x in findAdjacentNodes(maze, temp, wall=False, mazeLenLimit=length, mazeWidthLimit=width):
+            if x in allPaths:
                 count += 1
-        if count == 1:
+        if count == 1: #If there's only one way into temp (i.e one empty cell next to temp) then mark it as empty
             maze[temp[0]][temp[1]] = 0
-            visited.add(temp)
-            for x in findAdjacentNodes(maze, temp, wall=True):
-                if x not in potentialPath:
-                    potentialPath.add(x)
+            allPaths.add(temp)
+            potentialPath.update(findAdjacentNodes(maze, temp, wall=True, mazeLenLimit=length, mazeWidthLimit=width)) #Add all adjacent walls
     
     maze = pickStartEnd(maze)
 
