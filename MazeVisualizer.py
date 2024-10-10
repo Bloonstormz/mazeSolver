@@ -109,23 +109,23 @@ def drawCell(screen, pxSize, colour, borderColour, xCoord, yCoord, border=False)
     a = pygame.draw.rect(screen, colour, [xCoord*pxSize, yCoord*pxSize, pxSize, pxSize])
     if border:
         b = pygame.draw.rect(screen, borderColour, [xCoord*pxSize, yCoord*pxSize, pxSize, pxSize], 1)
-    return [a,b] if border else [a]
+    return {a,b} if border else {a}
 
 #Only draws the path taken for the search (saves cpu)
 def drawPath(screen, pxSize, curLoc, path, curColour=(0,0,255), pathColour=(0,255,0), bgColour=(0,0,0), border=True, update=True):
-    rectList = []
+    rectList = set()
     for yCoord, xCoord in path:
-        rectList.extend(drawCell(screen, pxSize, pathColour, bgColour, xCoord, yCoord, border))
-    rectList.extend(drawCell(screen, pxSize, curColour, bgColour, curLoc[1], curLoc[0], border))
+        rectList.update(drawCell(screen, pxSize, pathColour, bgColour, xCoord, yCoord, border))
+    rectList.update(drawCell(screen, pxSize, curColour, bgColour, curLoc[1], curLoc[0], border))
     if update:
         pygame.display.update(rectList)
     else:
         return rectList
 
 def clearPath(screen, pxSize, path, update=True):
-    rectList = []
+    rectList = set()
     for yCoord, xCoord in path:
-        rectList.extend(drawCell(screen, pxSize, (0,0,0), (0,0,0), xCoord, yCoord, False))
+        rectList.update(drawCell(screen, pxSize, (0,0,0), (0,0,0), xCoord, yCoord, False))
     if update:
         pygame.display.update(rectList)
     else:
@@ -202,27 +202,26 @@ def mazeSolver(Maze, method : ADTEnum, screen, cellBorder, cellSize, branch):
                 path[x].add(x)
 
             if branch:
-                if not(maze.isConnected(nextNode.peek(), curLocation)):
+                if not(maze.isConnected(newNode := nextNode.peek(), curLocation)):
                     a = drawPath(screen, cellSize, curLocation, path[curLocation], curColour=(0,128,0), pathColour= (0, 128, 0), border=False, update=False)
-                    curLocation = nextNode.peek()
+                    curLocation = newNode
                     pygame.display.update(a + drawPath(screen, cellSize, curLocation, path[curLocation], border=False, update=False))
                 else:
-                    a = []
-                    a.extend(drawCell(screen, cellSize, (0,255,0), (0,0,0), curLocation[1], curLocation[0], border=border))
-                    curLocation = nextNode.peek()
-                    a.extend(drawCell(screen, cellSize, (0,0,255), (0,0,0), curLocation[1], curLocation[0], border=border))
+                    a = set()
+                    a.update(drawCell(screen, cellSize, (0,255,0), (0,0,0), curLocation[1], curLocation[0], border=border))
+                    curLocation = newNode
+                    a.update(drawCell(screen, cellSize, (0,0,255), (0,0,0), curLocation[1], curLocation[0], border=border))
                     pygame.display.update(a)
             else:
                 if not(maze.isConnected(newNode := nextNode.peek(), curLocation)):
                     a = clearPath(screen, cellSize, path[curLocation].symmetric_difference(path[newNode]), update=False)
                     curLocation = newNode
                     pygame.display.update(a + drawPath(screen, cellSize, curLocation, path[curLocation], border=cellBorder, update=False))
-                    
                 else:
-                    a = []
-                    a.extend(drawCell(screen, cellSize, (0,255,0), (0,0,0), curLocation[1], curLocation[0], border=border))
-                    curLocation = nextNode.peek()
-                    a.extend(drawCell(screen, cellSize, (0,0,255), (0,0,0), curLocation[1], curLocation[0], border=border))
+                    a = set()
+                    a.update(drawCell(screen, cellSize, (0,255,0), (0,0,0), curLocation[1], curLocation[0], border=border))
+                    curLocation = newNode
+                    a.update(drawCell(screen, cellSize, (0,0,255), (0,0,0), curLocation[1], curLocation[0], border=border))
                     pygame.display.update(a)
 
 
