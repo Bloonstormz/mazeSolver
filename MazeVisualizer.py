@@ -2,7 +2,7 @@ import pygame
 from sys import exit
 import ctypes
 import mazeCreate
-import Maze
+import maze as Maze
 from enum import Enum
 import time
 
