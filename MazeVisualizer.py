@@ -1,8 +1,9 @@
 import pygame
+import random
 from sys import exit
 import ctypes
 import mazeCreate
-import Maze
+import maze
 from enum import Enum
 import time
 
@@ -38,13 +39,18 @@ class ADTEnum(Enum):
     MINHEAP = 2
 
 class ADT():
-    def __init__(self, val, type : ADTEnum):
+    def __init__(self, val, type : ADTEnum, end=None):
         self.vals = [val]
         self.__length = 1
         self.type = type
+        if self.type.name == "MINHEAP":
+            if end is None:
+                raise ValueError("MINHEAP - missing value(s)")
+            else:
+                self.__END = end
+            self.__heuristic = {}
 
-    def add(self, val, key=lambda x : x):
-        self.__length += 1
+    def add(self, val):
         match self.type.name:
             case "QUEUE":
                 self.vals.append(val)
@@ -52,12 +58,12 @@ class ADT():
                 self.vals.append(val)
             case "MINHEAP":
                 self.vals.append(val)
-                curPos = self.__length - 1
+                curPos = self.__length
                 item = self.vals[curPos] #store item to move
                 while curPos > 0:
                     parentPos = (curPos - 1) >> 1
                     parentItem = self.vals[parentPos]
-                    if key(item) < key(parentItem):
+                    if self.__key(item) < self.__key(parentItem):
                         self.vals[curPos] = parentItem
                         curPos = parentPos
                         continue
@@ -65,13 +71,23 @@ class ADT():
                 self.vals[curPos] = item #reinsert item
             case _:
                 raise ValueError(f"Unexpected type provided: {self.type}")
+        self.__length += 1
+            
+    def __key(self, x):
+        if x in self.__heuristic:
+            return self.__heuristic[x]
+        self.__heuristic[x] = (abs(self.__END[0] - x[0]) + abs(self.__END[1] - x[1]))
+        return self.__heuristic[x]
 
     def remove(self):
         self.__length -= 1
-        return self.vals.pop(0) if self.type.name == "QUEUE" or self.type.name == "ASTAR" else self.vals.pop()
+        return self.vals.pop(0) if self.type.name == "MINHEAP" or self.type.name == "QUEUE" else self.vals.pop()
     
     def peek(self):
-        return self.vals[0] if self.type.name == "QUEUE" or self.type.name == "ASTAR" else self.vals[-1]
+        if self.__length == 0:
+            raise IndexError("Cannot peek as ADT is empty")
+        else:
+            return self.vals[0] if self.type.name == "MINHEAP" or self.type.name == "QUEUE" else self.vals[-1]
     
     def length(self):
         return self.__length
@@ -96,26 +112,34 @@ def drawCell(screen, pxSize, colour, borderColour, xCoord, yCoord, border=False)
     return [a,b] if border else [a]
 
 #Only draws the path taken for the search (saves cpu)
-def drawPath(screen, pxSize, curLoc, path, curColour=(0,0,255), pathColour=(0,255,0), bgColour=(0,0,0), border=True):
+def drawPath(screen, pxSize, curLoc, path, curColour=(0,0,255), pathColour=(0,255,0), bgColour=(0,0,0), border=True, update=True):
     rectList = []
     for yCoord, xCoord in path:
         rectList.extend(drawCell(screen, pxSize, pathColour, bgColour, xCoord, yCoord, border))
     rectList.extend(drawCell(screen, pxSize, curColour, bgColour, curLoc[1], curLoc[0], border))
-    pygame.display.update(rectList)
+    if update:
+        pygame.display.update(rectList)
+    else:
+        return rectList
 
-def clearPath(screen, pxSize, path):
+def clearPath(screen, pxSize, path, update=True):
     rectList = []
     for yCoord, xCoord in path:
         rectList.extend(drawCell(screen, pxSize, (0,0,0), (0,0,0), xCoord, yCoord, False))
-    pygame.display.update(rectList)
+    if update:
+        pygame.display.update(rectList)
+    else:
+        return rectList
 
 #Draws the entire maze
-def renderMaze(screen : pygame.Surface, maze, pxSize, curLoc=None, path=None, wallColour = (255,255,255), bgColour = (0,0,0), startEndColour=(255,0,0), curColour=(0,0,255), pathColour=(0,255,0), border=True):
-    start, end = Maze.findStartEnd(maze)
+def renderMaze(screen : pygame.Surface, Maze, pxSize, curLoc=None, path=None, wallColour = (255,255,255), bgColour = (0,0,0), startEndColour=(255,0,0), curColour=(0,0,255), pathColour=(0,255,0), border=True):
+    start, end = maze.findStartEnd(Maze)
     screen.fill(bgColour)
-    for yCoord, row in enumerate(maze):
+    for yCoord, row in enumerate(Maze):
         for xCoord, val in enumerate(row):
-            if (yCoord, xCoord) == start or (yCoord, xCoord) == end:
+            if (yCoord, xCoord) == start:
+                drawColour = startEndColour
+            elif (yCoord, xCoord) == end:
                 drawColour = startEndColour
             elif val == 1:
                 drawColour = wallColour
@@ -125,59 +149,88 @@ def renderMaze(screen : pygame.Surface, maze, pxSize, curLoc=None, path=None, wa
     pygame.display.update()
 
 #Solving Algorithm
-def mazeSolver(maze, method : ADTEnum, screen, cellBorder, cellSize):
+def mazeSolver(Maze, method : ADTEnum, screen, cellBorder, cellSize, branch):
     global speed
     fpsTime, keyTime = 0,0
 
-    temp = Maze.findStartEnd(maze)
+    temp = maze.findStartEnd(Maze)
     start = temp[0]
     end = temp[1]
 
-    path = {start : [start]} # Dictionary to store path taken to all points
-    nextNode = ADT(start, method) # Abstract Date Type 
+    path = {start : {start}} # Dictionary to store path taken to all points
+    if method.name == "MINHEAP":
+        nextNode = ADT(start, method, end) # Abstract Date Type
+    else:
+        nextNode = ADT(start, method) # Abstract Date Type
+    try:
+        while nextNode.length() > 0:
+            curLocation = nextNode.remove()
 
-    while nextNode.length() > 0:
-        curLocation = nextNode.remove()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    exit()
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                exit()
+            key = pygame.key.get_pressed()
+            if key[pygame.K_EQUALS] and keyTime > 100:
+                speed += 1
+                keyTime = 0
+            elif key[pygame.K_MINUS] and keyTime > 100:
+                if speed > 0:
+                    speed -= 1
+                keyTime = 0
 
-        key = pygame.key.get_pressed()
-        if key[pygame.K_EQUALS] and keyTime > 100:
-            speed += 1
-            keyTime = 0
-        elif key[pygame.K_MINUS] and keyTime > 100:
-            if speed > 0:
-                speed -= 1
-            keyTime = 0
+            if fpsTime > 1000:
+                print(f"Max FPS: {speed}     FPS: {clock.get_fps()}", end="\r")
+                fpsTime = 0
 
-        if fpsTime > 1000:
-            print(f"Max FPS: {speed}     FPS: {clock.get_fps()}", end="\r")
-            fpsTime = 0
+            timer.duration()
+            pygame.display.set_caption(f"Solving Maze... Time taken: {timer}")
 
-        timer.duration()
-        pygame.display.set_caption(f"Solving Maze... Time taken: {timer}")
+            keyTime += clock.get_time()
+            fpsTime += clock.get_time()
 
-        keyTime += clock.get_time()
-        fpsTime += clock.get_time()
+            clock.tick(speed)
 
-        drawPath(screen, cellSize, curLocation, path[curLocation], border=cellBorder)
-        clock.tick(speed)
+            # Actual Maze Solving Part
+            for x in maze.findUnsearchedNodes(Maze, curLocation, path):
+                if x == end:
+                    path[curLocation].copy().add(end)
+                    return path[curLocation]
+                nextNode.add(x)
+                path[x] = path[curLocation].copy()
+                path[x].add(x)
 
-        for x in Maze.findUnsearchedNodes(maze, curLocation, path):
-            if x == end:
-                return path[curLocation] + [end]
-            nextNode.add(x)
-            path[x] = path[curLocation] + [x]
+            if branch:
+                if not(maze.isConnected(nextNode.peek(), curLocation)):
+                    a = drawPath(screen, cellSize, curLocation, path[curLocation], curColour=(0,128,0), pathColour= (0, 128, 0), border=False, update=False)
+                    curLocation = nextNode.peek()
+                    pygame.display.update(a + drawPath(screen, cellSize, curLocation, path[curLocation], border=False, update=False))
+                else:
+                    a = []
+                    a.extend(drawCell(screen, cellSize, (0,255,0), (0,0,0), curLocation[1], curLocation[0], border=border))
+                    curLocation = nextNode.peek()
+                    a.extend(drawCell(screen, cellSize, (0,0,255), (0,0,0), curLocation[1], curLocation[0], border=border))
+                    pygame.display.update(a)
+            else:
+                if not(maze.isConnected(newNode := nextNode.peek(), curLocation)):
+                    a = clearPath(screen, cellSize, path[curLocation].symmetric_difference(path[newNode]), update=False)
+                    curLocation = newNode
+                    pygame.display.update(a + drawPath(screen, cellSize, curLocation, path[curLocation], border=cellBorder, update=False))
+                    
+                else:
+                    a = []
+                    a.extend(drawCell(screen, cellSize, (0,255,0), (0,0,0), curLocation[1], curLocation[0], border=border))
+                    curLocation = nextNode.peek()
+                    a.extend(drawCell(screen, cellSize, (0,0,255), (0,0,0), curLocation[1], curLocation[0], border=border))
+                    pygame.display.update(a)
 
-        if not(Maze.isConnected(nextNode.peek(), curLocation)):
-            clearPath(screen, cellSize, path[curLocation])
-        
+
+    except IndentationError as error:
+        raise RuntimeError("Could not reach END: " + repr(error))
     raise RuntimeError("Could not reach END")
 
-def mazeSolving(maze, type : str, screen : pygame.Surface, cellBorder : bool, cellSize : int):
+def mazeSolving(maze, type : str, screen : pygame.Surface, cellBorder : bool, cellSize : int, branch : bool = False):
     match type.lower():
         case "bfs":
             method = ADTEnum.QUEUE
@@ -187,7 +240,7 @@ def mazeSolving(maze, type : str, screen : pygame.Surface, cellBorder : bool, ce
             method = ADTEnum.MINHEAP
         case _:
             raise ValueError("Unknown/Unimplemented Solving Method")
-    mazeSolver(maze, method, screen, cellBorder, cellSize)
+    mazeSolver(maze, method, screen, cellBorder, cellSize, branch)
 
 #Main Code
 if __name__ == "__main__":
@@ -200,21 +253,25 @@ if __name__ == "__main__":
         print("Unable to render maze. Dimensions too large")
         exit()
 
-    maze = mazeCreate.createMaze(mazeLength, mazeWidth)
-    temp = Maze.findStartEnd(maze)
+    theMaze = mazeCreate.createMaze(mazeLength, mazeWidth, seed="testSeed")
+    temp = maze.findStartEnd(theMaze)
 
     screen = pygame.display.set_mode([screenwidth,screenheight])
     pygame.display.set_caption("Solving Maze... Time taken: 0:00:00.0")
     clock = pygame.time.Clock()
-    renderMaze(screen, maze, pxSize, border=border)
-    speed = 60
+    renderMaze(screen, theMaze, pxSize, border=border)
+    speed = 250
 
     timer = Timer()
     timer.start()
     foo = mazeSolving
-    foo(maze, "dfs", screen, border, pxSize)
-    timer.duration()
-    pygame.display.set_caption(f"Solved! Time taken: {timer}")
+    try:
+        foo(theMaze, "astar", screen, border, pxSize, branch = False)
+    except IndentationError as error:
+        print("Error occurred: " + repr(error))
+    else:
+        timer.duration()
+        pygame.display.set_caption(f"Solved! Time taken: {timer}")
     
     while True:
         for event in pygame.event.get():
